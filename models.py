@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, Float, Time, Date
+from sqlalchemy import Boolean, Column, Integer, String, Float, Time, Date, ForeignKey
 from database import Base
 
 #tabla de login
@@ -68,4 +68,3 @@ class AlumnoClase(Base):
     i_clase = Column(Integer, ForeignKey('clase.id',ondelete="CASCADE"), primary_key=True)
     ci_alumno = Column(String(10), ForeignKey("alumnos.ci", ondelete="CASCADE"), primary_key=True)
     id_equipamiento = Column(Integer, ForeignKey("equipamiento.id"), nullable=True)
-   
