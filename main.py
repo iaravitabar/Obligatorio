@@ -15,6 +15,10 @@ def get_db():
     finally:
         db.close()
 
+@app.get("/")
+async def root():
+    return {"message": "Bienvenido a la API de la Escuela de Deportes de Nieve"}
+
 
 @app.get("/turnos/")
 async def read_turnos(db: Session = Depends(get_db)):
