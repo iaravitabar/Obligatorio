@@ -1,10 +1,13 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends
+from sqlalchemy.orm import Session
+from models import Instructor, Turno, Actividades, Alumno, Clase, AlumnoClase
+from schemas import InstructorCreate, TurnoCreate, ActividadCreate, AlumnoCreate, ClaseCreate
 from pydantic import BaseModel
 from typing import Annotated, List
-from models import Turno
 import models
+import crud
 from database import engine, SessionLocal
-from sqlalchemy.orm import Session
+
 
 app = FastAPI()
 models.Base.metadata.create_all(bind=engine)
@@ -14,10 +17,21 @@ def get_db():
         yield db
     finally:
         db.close()
-
+        
 @app.get("/")
 async def root():
     return {"message": "Bienvenido a la API de la Escuela de Deportes de Nieve"}
+
+######################################################################
+#                           Instructores                             #
+######################################################################
+
+
+
+
+######################################################################
+#                         Rutas de Turnos                           #
+######################################################################
 
 
 @app.get("/turnos/")
