@@ -237,3 +237,12 @@ async def update_alumnos(ci:str, updated_data: AlumnoCreate, db: Session = Depen
     db.commit()
     db.refresh(alumno)
     return alumno
+
+@app.delete("/alumnos/{ci}")
+async def delete_alumno(ci:str, db: Session = Depends(get_db)):
+    alumno = db.query(Alumno).filter(Alumno.ci == ci).first()
+    if not alumno:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    db.delete(alumno)
+    db.commit()
+    return {"message": "Alumno eliminado exitosamente"}
