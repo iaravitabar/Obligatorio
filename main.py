@@ -301,7 +301,18 @@ async def update_clase(id: int, updated_data: ClaseUpdate, db:Session = Depends(
     db.refresh(clase)
     return clase
     
+@app.delete("/clases/{id}")
+async def delete_clase(id: int, db: Session = Depends(get_db)):
+    clase = db.query(Clase).filter(Clase.id == id).first()
+    if not clase:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
     
+    if clase .dictada:
+        raise HTTPException(status_code=400, detail="No se puede eliminar una clase dictada")
+    
+    db.delete(clase)
+    db.commit()
+    return {"detail": "Clase eliminada exitosamente"}
 ##esto esta medio al pedo, no creo que lo use pero lo dejo xlasdudas#
 @app.get("/clases/{id}")
 async def get_clase(id: int, db: Session = Depends(get_db)):
