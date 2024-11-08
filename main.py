@@ -5,7 +5,6 @@ from schemas import InstructorCreate, TurnoCreate, ActividadCreate, AlumnoCreate
 from pydantic import BaseModel
 from typing import Annotated, List
 import models
-import crud
 from database import engine, SessionLocal
 
 
@@ -26,7 +25,12 @@ async def root():
 #                           Instructores                             #
 ######################################################################
 
-
+@app.get("/instructores/")
+async def get_instructors(db: Session = Depends(get_db)):
+    instructors = db.query(Instructor).all()
+    if not instructors:
+        raise HTTPException(status_code=404, detail="No se encontraron instructores")
+    return instructors
 
 
 ######################################################################
