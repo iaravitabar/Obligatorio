@@ -1,4 +1,6 @@
 from pydantic import BaseModel
+from datetime import time
+
 class ActividadCreate(BaseModel):
     descripcion: str
     costo: float
@@ -14,8 +16,9 @@ class InstructorCreate(BaseModel):
     apellido: str
 
 class TurnoCreate(BaseModel):
-    hora_inicio: str
-    hora_fin: str
+    id: int
+    hora_inicio: time
+    hora_fin: time
 
 class AlumnoCreate(BaseModel):
     ci: int

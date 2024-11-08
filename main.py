@@ -78,7 +78,7 @@ async def delete_instructor(ci: str, db: Session = Depends(get_db)):
     return {"message": "Instructor eliminado exitosamente"}
 
 ######################################################################
-#                         Rutas de Turnos                           #
+#                             Turnos                                 #
 ######################################################################
 
 
@@ -88,3 +88,48 @@ async def read_turnos(db: Session = Depends(get_db)):
     if not turnos:
         raise HTTPException(status_code=404, detail="No se encontraron turnos")
     return turnos
+
+@app.post("/turnos/", response_model=TurnoCreate)
+async def create_turno(turno: TurnoCreate, db: Session = Depends(get_db)):
+    new_turno = Turno(
+        hora_inicio=turno.hora_inicio,
+        hora_fin=turno.hora_fin
+    )
+    db.add(new_turno)
+    db.commit()
+    db.refresh(new_turno)
+    return new_turno
+
+@app.get("/turnos/{id}", response_model=TurnoCreate)
+async def get_turno(id: int, db: Session = Depends(get_db)):
+    try:
+        turno = db.query(Turno).filter(Turno.id == id).first()
+        if not turno:
+            raise HTTPException(status_code=404, detail="Turno no encontrado")
+        return turno
+    except Exception as e:    
+        print(e)
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+
+@app.put("/turnos/{id}", response_model=TurnoCreate)
+async def update_turno(id: int, updated_data: TurnoCreate, db: Session = Depends(get_db)):
+    turno = db.query(Turno).filter(Turno.id == id).first()
+    if not turno:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    
+    turno.hora_inicio = updated_data.hora_inicio
+    turno.hora_fin = updated_data.hora_fin
+    
+    db.commit()
+    db.refresh(turno)
+    return turno
+
+@app.delete("/turnos/{id}")
+async def delete_turno (id:int, db:Session = Depends(get_db)):
+    turno = db.query(Turno).filter(Turno.id == id).first()
+    if not turno:
+        raise HTTPException(status_code=404, detail="Turno no encontrado")
+    db.delete(turno)
+    db.commit()
+    return {"message": "Turno eliminado exitosamente"}
+
