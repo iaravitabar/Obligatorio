@@ -215,3 +215,10 @@ async def create_alumno(alumno: AlumnoCreate, db: Session = Depends(get_db)):
     db.refresh(new_alumno)
     return new_alumno
 
+@app.get("/alumnos/{ci}", response_model=AlumnoCreate)
+async def get_alumno (ci: str, db: Session = Depends(get_db)):
+    alumno = db.query(Alumno).filter(Alumno.ci == ci).first()
+    if not alumno:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    return alumno
+
