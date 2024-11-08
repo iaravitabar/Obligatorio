@@ -48,6 +48,7 @@ class Alumno(Base):
     ci = Column(String(10), primary_key=True)
     nombre = Column(String(255), nullable=False)
     apellido = Column(String(255), nullable=False)
+    fecha_nacimiento = Column(Date, nullable=False)    
     telefono = Column(String(255), nullable=False)
     correo = Column(String(255), nullable=False)
     

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import time
+from datetime import time, date
 
 class ActividadCreate(BaseModel):
     id: int
@@ -22,12 +22,12 @@ class TurnoCreate(BaseModel):
     hora_fin: time
 
 class AlumnoCreate(BaseModel):
-    ci: int
+    ci: str
     nombre: str
     apellido: str
-    fecha_nacimiento: str
+    fecha_nacimiento: date
     telefono: str
-    email: str
+    correo: str
 
 class ClaseCreate(BaseModel):
     ci_instructor: int

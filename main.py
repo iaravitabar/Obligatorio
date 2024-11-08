@@ -185,3 +185,13 @@ async def delete_actividad(id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Actividad eliminada exitosamente"}
 
+######################################################################
+#                               Alumnos                              #
+######################################################################
+
+@app.get("/alumnos/", response_model=List[AlumnoCreate])
+async def fet_alumnos(db: Session = Depends(get_db)):
+    alumnos = db.query(Alumno).all()
+    if not alumnos:
+        raise HTTPException(status_code=404, detail="No se encontraron alumnos")
+    return alumnos
