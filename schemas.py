@@ -4,12 +4,12 @@ from typing import Optional
 
 #### Actividades ####
 class ActividadCreate(BaseModel):
-    id: int
+    id: Optional[int] = None
     descripcion: str
     costo: float
     
 class ActividadUpdate(BaseModel):
-    description: Optional[str] = None
+    descripcion: Optional[str] = None
     costo: Optional[float] = None
     
 #### Equipamiento ####
@@ -29,12 +29,12 @@ class InstructorCreate(BaseModel):
     apellido: str
     
 class InstructorUpdate(BaseModel):
-    name: Optional[str] = None
-    last_name: Optional[str] = None
+    nombre: Optional[str] = None
+    apellido: Optional[str] = None
     
 #### Turno ####
 class TurnoCreate(BaseModel):
-    id: int
+    id: Optional[int] = None
     hora_inicio: time
     hora_fin: time
 
@@ -61,7 +61,7 @@ class AlumnoUpdate(BaseModel):
 
 #### Clase ####
 class ClaseCreate(BaseModel):
-    id: int
+    id: Optional[int] = None
     ci_instructor: int
     id_actividad: int
     id_turno: int
