@@ -320,3 +320,5 @@ async def get_clase(id: int, db: Session = Depends(get_db)):
     if not clase:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
     return clase
+
+
