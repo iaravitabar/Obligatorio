@@ -222,3 +222,18 @@ async def get_alumno (ci: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Alumno no encontrado")
     return alumno
 
+@app.put("/alumnos/{ci}", response_model=AlumnoCreate)
+async def update_alumnos(ci:str, updated_data: AlumnoCreate, db: Session = Depends(get_db)):
+    alumno = db.query(Alumno).filter(Alumno.ci == ci).first()
+    if not alumno:
+        raise HTTPException(status_code=404, detail="Alumno no encontrado")
+    
+    alumno.nombre = updated_data.nombre
+    alumno.apellido = updated_data.apellido
+    alumno.fecha_nacimiento = updated_data.fecha_nacimiento
+    alumno.telefono = updated_data.telefono
+    alumno.correo = updated_data.correo
+    
+    db.commit()
+    db.refresh(alumno)
+    return alumno
