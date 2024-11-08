@@ -13,7 +13,7 @@ class Actividades(Base):
     __tablename__ = "actividades"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    descpricion = Column(String(255), nullable=False)
+    descripcion = Column(String(255), nullable=False)
     costo = Column(Float(10,2), nullable=False)
 
 #tabla de equipamiento

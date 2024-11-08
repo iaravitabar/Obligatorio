@@ -133,3 +133,55 @@ async def delete_turno (id:int, db:Session = Depends(get_db)):
     db.commit()
     return {"message": "Turno eliminado exitosamente"}
 
+######################################################################
+#                             Actividades                            #
+######################################################################
+
+@app.get("/actividades/")
+async def read_actividades(db: Session = Depends(get_db)):
+    actividades = db.query(Actividades).all()
+    if not actividades:
+        raise HTTPException(status_code=404, detail="No se encontraron actividades")
+    return actividades
+
+@app.post("/actividades/", response_model=ActividadCreate)
+async def create_actividad(actividad: ActividadCreate, db: Session = Depends(get_db)):
+    new_actividad = Actividades(
+        id=actividad.id,
+        descripcion=actividad.descripcion,
+        costo=actividad.costo
+    )
+    db.add(new_actividad)
+    db.commit()
+    db.refresh(new_actividad)
+    return new_actividad
+
+@app.get("/actividades/{id}", response_model=ActividadCreate)
+async def get_actividad(id: int, db: Session = Depends(get_db)):
+    actividad = db.query(Actividades).filter(Actividades.id == id).first()
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    return actividad
+
+@app.put("/actividades/{id}", response_model=ActividadCreate)
+async def update_actividad(id: int, updated_data: ActividadCreate, db: Session = Depends(get_db)):
+    actividad = db.query(Actividades).filter(Actividades.id == id).first()
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    
+    actividad.descripcion = updated_data.descripcion
+    actividad.costo = updated_data.costo
+    
+    db.commit()
+    db.refresh(actividad)
+    return actividad
+
+@app.delete("/actividades/{id}")
+async def delete_actividad(id: int, db: Session = Depends(get_db)):
+    actividad = db.query(Actividades).filter(Actividades.id == id).first()
+    if not actividad:
+        raise HTTPException(status_code=404, detail="Actividad no encontrada")
+    db.delete(actividad)
+    db.commit()
+    return {"message": "Actividad eliminada exitosamente"}
+

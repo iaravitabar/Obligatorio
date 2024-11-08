@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from datetime import time
 
 class ActividadCreate(BaseModel):
+    id: int
     descripcion: str
     costo: float
 
