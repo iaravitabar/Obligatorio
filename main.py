@@ -259,20 +259,50 @@ async def get_clases(db: Session = Depends(get_db)):
     return clases
 
 @app.post("/clases/", response_model=ClaseCreate)
-async def update_clase(id: int, clase_update: ClaseCreate, db: Session = Depends(get_db)):
-    clase = db.query(Clase).filter(Clase == id).first
+async def create_clase(clase: ClaseCreate, db: Session = Depends(get_db)):
+    clase_existente = db.query(Clase).filter(
+        Clase.ci_instructor == clase.ci_instructor,
+        Clase.id_turno == clase.id_turno
+    ).first()
+    if clase_existente:
+        raise HTTPException(status_code=400, detail="El instructor ya tiene una clase en este turno")
+    
+    nueva_clase = Clase(
+        ci_instructor=clase.ci_instructor,
+        id_actividad=clase.id_actividad,
+        id_turno=clase.id_turno,
+        dictada = clase.dictada
+    )
+    db.add(nueva_clase)
+    db.commit()
+    db.refresh(nueva_clase)
+    return nueva_clase
+
+@app.put("/clases/{id}", response_model=ClaseUpdate)
+async def update_clase(id: int, updated_data: ClaseUpdate, db:Session = Depends(get_db)):
+    clase = db.query(Clase).filter(Clase.id == id).first()
     if not clase:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
     
-    clase.name + clase_update.name
-    clase.description = clase_update.description
-    clase.duration = clase_update.duration
+     #verifica si el instructor tiene una clase en el turno nuevo
+    conflicto_clase = db.query(Clase).filter(
+        Clase.ci_instructor == updated_data.ci_instructor,
+        Clase.id_turno == updated_data.id_turno,
+        Clase.id != id #excluye la clase actual
+    ).first()
+    
+    if conflicto_clase:
+        raise HTTPException(status_code=400, detail="El instructor ya tiene una clase en este turno")
+    clase.ci_instructor = updated_data.ci_instructor
+    clase.id_actividad = updated_data.id_actividad
+    clase.id_turno = updated_data.id_turno
     
     db.commit()
     db.refresh(clase)
     return clase
-
-
+    
+    
+##esto esta medio al pedo, no creo que lo use pero lo dejo xlasdudas#
 @app.get("/clases/{id}")
 async def get_clase(id: int, db: Session = Depends(get_db)):
     clase = db.query(Clase).filter(Clase.id == id).first()
