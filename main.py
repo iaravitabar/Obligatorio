@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.orm import Session
 from models import Instructor, Turno, Actividades, Alumno, Clase, AlumnoClase
-from schemas import InstructorCreate, TurnoCreate, ActividadCreate, AlumnoCreate, ClaseCreate
+from schemas import InstructorCreate, InstructorUpdate, TurnoCreate, TurnoUpdate, ActividadCreate, ActividadUpdate, AlumnoCreate, AlumnoUpdate, ClaseCreate, ClaseUpdate
 from pydantic import BaseModel
 from typing import Annotated, List
 import models
@@ -56,7 +56,7 @@ async def get_instructor(ci: str, db: Session = Depends(get_db)):
     return instructor
 
 @app.put("/instructores/{ci}")
-async def update_instructor(ci:str, updated_data: InstructorCreate, db: Session = Depends(get_db)):
+async def update_instructor(ci:str, updated_data: InstructorUpdate, db: Session = Depends(get_db)):
     instructor = db.query(Instructor).filter(Instructor.ci == ci).first()
     if not instructor:
         raise HTTPException(status_code=404, detail="Instructor no encontrado")
@@ -111,8 +111,8 @@ async def get_turno(id: int, db: Session = Depends(get_db)):
         print(e)
         raise HTTPException(status_code=404, detail="Turno no encontrado")
 
-@app.put("/turnos/{id}", response_model=TurnoCreate)
-async def update_turno(id: int, updated_data: TurnoCreate, db: Session = Depends(get_db)):
+@app.put("/turnos/{id}", response_model=TurnoUpdate)
+async def update_turno(id: int, updated_data: TurnoUpdate, db: Session = Depends(get_db)):
     turno = db.query(Turno).filter(Turno.id == id).first()
     if not turno:
         raise HTTPException(status_code=404, detail="Turno no encontrado")
@@ -163,8 +163,8 @@ async def get_actividad(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
     return actividad
 
-@app.put("/actividades/{id}", response_model=ActividadCreate)
-async def update_actividad(id: int, updated_data: ActividadCreate, db: Session = Depends(get_db)):
+@app.put("/actividades/{id}", response_model=ActividadUpdate)
+async def update_actividad(id: int, updated_data: ActividadUpdate, db: Session = Depends(get_db)):
     actividad = db.query(Actividades).filter(Actividades.id == id).first()
     if not actividad:
         raise HTTPException(status_code=404, detail="Actividad no encontrada")
@@ -189,7 +189,7 @@ async def delete_actividad(id: int, db: Session = Depends(get_db)):
 #                               Alumnos                              #
 ######################################################################
 
-@app.get("/alumnos/", response_model=List[AlumnoCreate])
+@app.get("/alumnos/")
 async def fet_alumnos(db: Session = Depends(get_db)):
     alumnos = db.query(Alumno).all()
     if not alumnos:
@@ -215,15 +215,15 @@ async def create_alumno(alumno: AlumnoCreate, db: Session = Depends(get_db)):
     db.refresh(new_alumno)
     return new_alumno
 
-@app.get("/alumnos/{ci}", response_model=AlumnoCreate)
+@app.get("/alumnos/{ci}")
 async def get_alumno (ci: str, db: Session = Depends(get_db)):
     alumno = db.query(Alumno).filter(Alumno.ci == ci).first()
     if not alumno:
         raise HTTPException(status_code=404, detail="Alumno no encontrado")
     return alumno
 
-@app.put("/alumnos/{ci}", response_model=AlumnoCreate)
-async def update_alumnos(ci:str, updated_data: AlumnoCreate, db: Session = Depends(get_db)):
+@app.put("/alumnos/{ci}", response_model=AlumnoUpdate)
+async def update_alumnos(ci:str, updated_data: AlumnoUpdate, db: Session = Depends(get_db)):
     alumno = db.query(Alumno).filter(Alumno.ci == ci).first()
     if not alumno:
         raise HTTPException(status_code=404, detail="Alumno no encontrado")
@@ -251,11 +251,33 @@ async def delete_alumno(ci:str, db: Session = Depends(get_db)):
 #                               Clases                               #
 ######################################################################
 
-@app.get("/clases/", response_model=List[ClaseCreate])
+@app.get("/clases/")
 async def get_clases(db: Session = Depends(get_db)):
     clases = db.query(Clase).all()
     if not clases:
         raise HTTPException(status_code=404, detail="No se encontraron clases")
     return clases
+
+@app.post("/clases/", response_model=ClaseCreate)
+async def update_clase(id: int, clase_update: ClaseCreate, db: Session = Depends(get_db)):
+    clase = db.query(Clase).filter(Clase == id).first
+    if not clase:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
     
+    clase.name + clase_update.name
+    clase.description = clase_update.description
+    clase.duration = clase_update.duration
+    
+    db.commit()
+    db.refresh(clase)
+    return clase
+
+
+@app.get("/clases/{id}")
+async def get_clase(id: int, db: Session = Depends(get_db)):
+    clase = db.query(Clase).filter(Clase.id == id).first()
+    if not clase:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
+    return clase
+
     
