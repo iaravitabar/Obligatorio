@@ -30,6 +30,8 @@ class AlumnoCreate(BaseModel):
     correo: str
 
 class ClaseCreate(BaseModel):
+    id: int
     ci_instructor: int
     id_actividad: int
     id_turno: int
+    dictada: bool = False

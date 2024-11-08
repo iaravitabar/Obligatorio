@@ -246,3 +246,16 @@ async def delete_alumno(ci:str, db: Session = Depends(get_db)):
     db.delete(alumno)
     db.commit()
     return {"message": "Alumno eliminado exitosamente"}
+
+######################################################################
+#                               Clases                               #
+######################################################################
+
+@app.get("/clases/", response_model=List[ClaseCreate])
+async def get_clases(db: Session = Depends(get_db)):
+    clases = db.query(Clase).all()
+    if not clases:
+        raise HTTPException(status_code=404, detail="No se encontraron clases")
+    return clases
+    
+    
