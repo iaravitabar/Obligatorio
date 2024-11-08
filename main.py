@@ -195,3 +195,23 @@ async def fet_alumnos(db: Session = Depends(get_db)):
     if not alumnos:
         raise HTTPException(status_code=404, detail="No se encontraron alumnos")
     return alumnos
+
+@app.post("/alumnos/", response_model=AlumnoCreate)
+async def create_alumno(alumno: AlumnoCreate, db: Session = Depends(get_db)):
+    db_alumno = db.query(Alumno).filter(Alumno.ci == alumno.ci).first()
+    if db_alumno:
+        raise HTTPException(status_code=400, detail="Alumno con esta CI ya existe")
+    
+    new_alumno = Alumno(
+        ci=alumno.ci,
+        nombre=alumno.nombre,
+        apellido=alumno.apellido,
+        fecha_nacimiento=alumno.fecha_nacimiento,
+        telefono=alumno.telefono,
+        correo=alumno.correo
+    )
+    db.add(new_alumno)
+    db.commit()
+    db.refresh(new_alumno)
+    return new_alumno
+
