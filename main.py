@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from models import Instructor, Turno, Actividades, Alumno, Clase, AlumnoClase
 from schemas import InstructorCreate, InstructorUpdate, TurnoCreate, TurnoUpdate, ActividadCreate, ActividadUpdate, AlumnoCreate, AlumnoUpdate, ClaseCreate, ClaseUpdate
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated, List
 import models
 from database import engine, SessionLocal
@@ -16,6 +17,14 @@ def get_db():
         yield db
     finally:
         db.close()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Cambia esto al origen de tu frontend
+    allow_credentials=True,
+    allow_methods=["*"],  # Permite todos los métodos HTTP
+    allow_headers=["*"],  # Permite todos los encabezados
+)
         
 @app.get("/")
 async def root():
@@ -320,5 +329,4 @@ async def get_clase(id: int, db: Session = Depends(get_db)):
     if not clase:
         raise HTTPException(status_code=404, detail="Clase no encontrada")
     return clase
-
 
