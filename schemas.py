@@ -7,6 +7,7 @@ class ActividadCreate(BaseModel):
     id: Optional[int] = None
     descripcion: str
     costo: float
+    emoji: str
     
 class ActividadUpdate(BaseModel):
     descripcion: Optional[str] = None

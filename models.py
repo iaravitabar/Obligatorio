@@ -15,6 +15,7 @@ class Actividades(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     descripcion = Column(String(255), nullable=False)
     costo = Column(Float(10,2), nullable=False)
+    emoji = Column(String(255), nullable=False)
 
 #tabla de equipamiento
 class Equipamiento(Base):
