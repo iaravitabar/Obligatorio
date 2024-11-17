@@ -51,6 +51,7 @@ class AlumnoCreate(BaseModel):
     fecha_nacimiento: date
     telefono: str
     correo: str
+    contrasena: str
     
 class AlumnoUpdate(BaseModel):
     nombre: Optional[str] = None
@@ -61,9 +62,9 @@ class AlumnoUpdate(BaseModel):
 
 
 #### Clase ####
-class ClaseCreate(BaseModel):
+class Clase(BaseModel):
     id: Optional[int] = None
-    ci_instructor: int
+    ci_instructor: str
     id_actividad: int
     id_turno: int
     dictada: bool = False
@@ -73,3 +74,4 @@ class ClaseUpdate(BaseModel):
     id_actividad: Optional[int] = None
     id_turno: Optional[int] = None
     dictada: Optional[bool] = None
+

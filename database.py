@@ -1,9 +1,14 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+import mysql.connector 
+from mysql.connector import Error
 
-URL_DATABASE = 'mysql+pymysql://root:rootpassword@localhost:3306/obligatorio'
-
-engine = create_engine(URL_DATABASE)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+def get_connection():
+    try: 
+        connection = mysql.connector.connect(
+            host='localhost',
+            database='obligatorio',
+            user= 'root',
+            password= 'rootpassword')
+        return connection
+    except Error as e:
+        print("error al conectar a la base de datos:{e}")
+        raise e
