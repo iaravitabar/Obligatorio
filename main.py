@@ -2,9 +2,10 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import pymysql
 from typing import List
+import datetime
 from pydantic import BaseModel
 from database import get_connection
-from schemas import Clase
+from schemas import Clase, Alumno, Login
 
 app = FastAPI()
 
@@ -23,6 +24,45 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"message": "Bienvenido a la API de la Escuela de Deportes de Nieve"}
+
+@app.post("/alumnos/")
+async def create_alumno(alumno: Alumno):
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            # Verificar si la cédula ya existe
+            cursor.execute("SELECT ci FROM alumnos WHERE ci = %s", (alumno.ci,))
+            if cursor.fetchone():
+                raise HTTPException(status_code=400, detail="Alumno con esta CI ya existe")
+            
+            # Insertar nuevo alumno
+            cursor.execute(
+                """
+                INSERT INTO alumnos (ci, nombre,apellido, correo, telefono, fecha_nacimiento) 
+                VALUES (%s, %s,%s, %s, %s, %s)
+                """,
+                (alumno.ci, alumno.nombre, alumno.apellido, alumno.correo, alumno.telefono, alumno.fecha_nacimiento),
+            )
+            connection.commit()
+            return {"message": "Alumno creado exitosamente"}
+    finally:
+        connection.close()
+
+@app.post("/login/")
+async def login(request: Login):
+    ci = request.ci
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT ci, nombre FROM alumnos WHERE ci = %s", (ci,))
+            result = cursor.fetchone()
+            if not result:
+                raise HTTPException(status_code=404, detail="Usuario no encontrado")
+            
+            return {"message": "Inicio de sesión exitoso", "nombre": result[0]}
+    finally:
+        connection.close()
+
 
 @app.get("/actividades/")
 async def get_actividades():
@@ -402,23 +442,6 @@ async def create_alumno_clase(alumno_clase: dict):
 #     finally:
 #         connection.close()
 
-# @app.post("/alumnos/")
-# async def create_alumno(ci: str, nombre: str, apellido: str, fecha_nacimiento: str, telefono: str, correo: str):
-#     connection = get_db_connection()
-#     try:
-#         with connection.cursor() as cursor:
-#             cursor.execute("SELECT * FROM Alumno WHERE ci = %s", (ci,))
-#             if cursor.fetchone():
-#                 raise HTTPException(status_code=400, detail="Alumno con esta CI ya existe")
-            
-#             cursor.execute(
-#                 "INSERT INTO Alumno (ci, nombre, apellido, fecha_nacimiento, telefono, correo) VALUES (%s, %s, %s, %s, %s, %s)",
-#                 (ci, nombre, apellido, fecha_nacimiento, telefono, correo)
-#             )
-#             connection.commit()
-#             return {"message": "Alumno creado exitosamente"}
-#     finally:
-#         connection.close()
 
 # @app.get("/alumnos/{ci}")
 # async def get_alumno(ci: str):

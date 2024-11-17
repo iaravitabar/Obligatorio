@@ -2,6 +2,10 @@ from pydantic import BaseModel
 from datetime import time, date
 from typing import Optional
 
+####login####
+class Login(BaseModel):
+    ci: str
+
 #### Actividades ####
 class ActividadCreate(BaseModel):
     id: Optional[int] = None
@@ -44,14 +48,14 @@ class TurnoUpdate(BaseModel):
     hora_fin: Optional[time] = None
     
 #### Alumno ####
-class AlumnoCreate(BaseModel):
+class Alumno(BaseModel):
     ci: str
     nombre: str
     apellido: str
     fecha_nacimiento: date
     telefono: str
     correo: str
-    contrasena: str
+
     
 class AlumnoUpdate(BaseModel):
     nombre: Optional[str] = None
