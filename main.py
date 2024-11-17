@@ -5,7 +5,7 @@ from typing import List
 import datetime
 from pydantic import BaseModel
 from database import get_connection
-from schemas import Clase, Alumno, Login
+from schemas import Clase, Alumno, Login, AlumnoClase, EquipamientoCreate, InstructorCreate
 
 app = FastAPI()
 
@@ -179,39 +179,189 @@ async def get_turnos():
         connection.close()
         
         
-@app.post("/alumno_clase/")
-async def create_alumno_clase(alumno_clase: dict):
+@app.post("/inscripciones/")
+async def inscripciones(data: dict):
     """
-    Inscribe un alumno en una clase en la tabla `alumno_clase` con los campos `id_clase`, `ci_alumno`, y `id_equipamiento`.
+    Verifica si la clase existe, y si no, la crea. Luego inscribe al alumno.
     """
     connection = get_connection()
     try:
         with connection.cursor() as cursor:
-            # Verifica si el alumno ya está inscrito en la clase
-            cursor.execute(
-                "SELECT * FROM alumno_clase WHERE id_clase = %s AND ci_alumno = %s",
-                (alumno_clase["id_clase"], alumno_clase["ci_alumno"]),
-            )
+            # Extraer datos del request
+            ci_alumno = data["ci_alumno"]
+            id_actividad = data["id_actividad"]
+            ci_instructor = data["ci_instructor"]
+            id_turno = data["id_turno"]  # Usamos el ID del turno directamente
+            id_equipamiento = data.get("id_equipamiento", None)
+
+            # Validar si el instructor ya tiene otra clase en este turno
+            query_instructor_turno = """
+                SELECT * FROM clase
+                WHERE ci_instructor = %s AND id_turno = %s
+            """
+            cursor.execute(query_instructor_turno, (ci_instructor, id_turno))
             if cursor.fetchone():
                 raise HTTPException(
                     status_code=400,
-                    detail="El alumno ya está inscrito en esta clase"
+                    detail="El instructor ya tiene una clase en este turno"
                 )
 
-            # Inserta el nuevo registro
-            cursor.execute(
+            # Validar si el alumno ya está inscrito en otra clase en este turno
+            query_alumno_turno = """
+                SELECT * FROM alumno_clase ac
+                JOIN clase c ON ac.id_clase = c.id
+                WHERE ac.ci_alumno = %s AND c.id_turno = %s
+            """
+            cursor.execute(query_alumno_turno, (ci_alumno, id_turno))
+            if cursor.fetchone():
+                raise HTTPException(
+                    status_code=400,
+                    detail="El alumno ya está inscrito en otra clase en este turno"
+                )
+
+            # Validar si ya existe una clase con el mismo instructor, actividad y turno
+            query_clase_existente = """
+                SELECT id FROM clase
+                WHERE ci_instructor = %s AND id_actividad = %s AND id_turno = %s
+            """
+            cursor.execute(query_clase_existente, (ci_instructor, id_actividad, id_turno))
+            clase_existente = cursor.fetchone()
+
+            if not clase_existente:
+                # Crear la clase si no existe
+                query_crear_clase = """
+                    INSERT INTO clase (ci_instructor, id_actividad, id_turno, dictada)
+                    VALUES (%s, %s, %s, %s)
                 """
+                cursor.execute(query_crear_clase, (ci_instructor, id_actividad, id_turno, False))
+                connection.commit()
+                clase_id = cursor.lastrowid
+            else:
+                clase_id = clase_existente[0]
+
+            # Inscribir al alumno en la clase
+            query_inscribir_alumno = """
                 INSERT INTO alumno_clase (id_clase, ci_alumno, id_equipamiento)
                 VALUES (%s, %s, %s)
+            """
+            cursor.execute(query_inscribir_alumno, (clase_id, ci_alumno, id_equipamiento))
+            connection.commit()
+
+            return {"message": "Alumno inscrito exitosamente en la clase", "id_clase": clase_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    finally:
+        connection.close()
+
+@app.post("/equipamientos/")
+async def crear_equipamiento(equipamiento: EquipamientoCreate):
+    """
+    Crea un nuevo registro en la tabla `equipamiento`.
+    Valida que `id_actividad` exista en la tabla `actividades`.
+    """
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            # Verificar si la actividad existe
+            cursor.execute("SELECT id FROM actividades WHERE id = %s", (equipamiento.id_actividad,))
+            actividad = cursor.fetchone()
+            if not actividad:
+                raise HTTPException(status_code=404, detail="Actividad no encontrada")
+
+            # Insertar el nuevo equipamiento
+            cursor.execute(
+                """
+                INSERT INTO equipamiento (id_actividad, descripcion, costo)
+                VALUES (%s, %s, %s)
                 """,
-                (
-                    alumno_clase["id_clase"],
-                    alumno_clase["ci_alumno"],
-                    alumno_clase.get("id_equipamiento", None),  # `id_equipamiento` es opcional
-                ),
+                (equipamiento.id_actividad, equipamiento.descripcion, equipamiento.costo),
             )
             connection.commit()
-            return {"message": "Alumno inscrito exitosamente en la clase"}
+
+            # Obtener el ID generado automáticamente
+            nuevo_id = cursor.lastrowid
+            return {
+                "message": "Equipamiento creado exitosamente",
+                "id": nuevo_id,
+                "id_actividad": equipamiento.id_actividad,
+                "descripcion": equipamiento.descripcion,
+                "costo": equipamiento.costo
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al crear el equipamiento: {str(e)}")
+    finally:
+        connection.close()
+        
+@app.delete("/equipamientos/{equipamiento_id}")
+async def eliminar_equipamiento(equipamiento_id: int):
+    """
+    Elimina un registro de la tabla `equipamiento` por su ID.
+    """
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            # Verificar si el equipamiento existe
+            cursor.execute("SELECT id FROM equipamiento WHERE id = %s", (equipamiento_id,))
+            equipamiento = cursor.fetchone()
+            if not equipamiento:
+                raise HTTPException(status_code=404, detail="Equipamiento no encontrado")
+
+            # Eliminar el equipamiento
+            cursor.execute("DELETE FROM equipamiento WHERE id = %s", (equipamiento_id,))
+            connection.commit()
+
+            return {
+                "message": "Equipamiento eliminado exitosamente",
+                "id": equipamiento_id
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al eliminar el equipamiento: {str(e)}")
+    finally:
+        connection.close()
+
+
+
+        
+@app.get("/clases/")
+async def obtener_clases():
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM clase")
+            clases = cursor.fetchall()
+            return [{"id": c[0], "ci_instructor": c[1], "id_actividad": c[2], "id_turno": c[3], "dictada": c[4]} for c in clases]
+    finally:
+        connection.close()
+@app.get("/equipamientos/")
+async def obtener_equipamientos():
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM equipamiento")
+            equipamientos = cursor.fetchall()
+            return [{"id": e[0], "id_actividad": e[1], "descripcion": e[2], "costo": float(e[3])} for e in equipamientos]
+    finally:
+        connection.close()
+        
+        
+        
+@app.post("/instructores/")
+async def create_instructor(instructor: InstructorCreate):
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            # Verificar si la CI ya existe
+            cursor.execute("SELECT * FROM instructores WHERE ci = %s", (instructor.ci,))
+            if cursor.fetchone():
+                raise HTTPException(status_code=400, detail="Instructor con esta CI ya existe")
+            
+            # Insertar el nuevo instructor
+            cursor.execute(
+                "INSERT INTO instructores (ci, nombre, apellido) VALUES (%s, %s, %s)",
+                (instructor.ci, instructor.nombre, instructor.apellido)
+            )
+            connection.commit()
+            return {"message": "Instructor creado exitosamente"}
     finally:
         connection.close()
 ######################################################################
@@ -231,23 +381,6 @@ async def create_alumno_clase(alumno_clase: dict):
 #     finally:
 #         connection.close()
 
-# @app.post("/instructores/")
-# async def create_instructor(ci: str, nombre: str, apellido: str):
-#     connection = get_db_connection()
-#     try:
-#         with connection.cursor() as cursor:
-#             cursor.execute("SELECT * FROM Instructor WHERE ci = %s", (ci,))
-#             if cursor.fetchone():
-#                 raise HTTPException(status_code=400, detail="Instructor con esta CI ya existe")
-            
-#             cursor.execute(
-#                 "INSERT INTO Instructor (ci, nombre, apellido) VALUES (%s, %s, %s)",
-#                 (ci, nombre, apellido)
-#             )
-#             connection.commit()
-#             return {"message": "Instructor creado exitosamente"}
-#     finally:
-#         connection.close()
 
 # @app.get("/instructores/{ci}")
 # async def get_instructor(ci: str):

@@ -79,3 +79,9 @@ class ClaseUpdate(BaseModel):
     id_turno: Optional[int] = None
     dictada: Optional[bool] = None
 
+####Alumno_Clase####
+
+class AlumnoClase(BaseModel):
+    id_clase: int
+    ci_alumno: str
+    id_equipamiento: Optional[int] = None
