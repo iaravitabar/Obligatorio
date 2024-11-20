@@ -6,6 +6,10 @@ import datetime
 from pydantic import BaseModel
 from database import get_connection
 from schemas import Clase, Alumno, Login, AlumnoClase, EquipamientoCreate, InstructorCreate
+from datetime import datetime
+
+
+now = datetime.now()
 
 app = FastAPI()
 
@@ -178,46 +182,20 @@ async def get_turnos():
     finally:
         connection.close()
         
-        
 @app.post("/inscripciones/")
 async def inscripciones(data: dict):
     """
-    Verifica si la clase existe, y si no, la crea. Luego inscribe al alumno.
+    Verifica si la clase existe, y si no, la crea. Luego inscribe a los alumnos en la clase existente.
     """
     connection = get_connection()
     try:
         with connection.cursor() as cursor:
-            # Extraer datos del request
-            ci_alumno = data["ci_alumno"]
+            # Extraer datos
+            alumnos = data["alumnos"]  # Lista de alumnos (CIs)
             id_actividad = data["id_actividad"]
             ci_instructor = data["ci_instructor"]
-            id_turno = data["id_turno"]  # Usamos el ID del turno directamente
-            id_equipamiento = data.get("id_equipamiento", None)
-
-            # Validar si el instructor ya tiene otra clase en este turno
-            query_instructor_turno = """
-                SELECT * FROM clase
-                WHERE ci_instructor = %s AND id_turno = %s
-            """
-            cursor.execute(query_instructor_turno, (ci_instructor, id_turno))
-            if cursor.fetchone():
-                raise HTTPException(
-                    status_code=400,
-                    detail="El instructor ya tiene una clase en este turno"
-                )
-
-            # Validar si el alumno ya está inscrito en otra clase en este turno
-            query_alumno_turno = """
-                SELECT * FROM alumno_clase ac
-                JOIN clase c ON ac.id_clase = c.id
-                WHERE ac.ci_alumno = %s AND c.id_turno = %s
-            """
-            cursor.execute(query_alumno_turno, (ci_alumno, id_turno))
-            if cursor.fetchone():
-                raise HTTPException(
-                    status_code=400,
-                    detail="El alumno ya está inscrito en otra clase en este turno"
-                )
+            id_turno = data["id_turno"]
+            id_equipamiento = data.get("id_equipamiento")  # Puede ser None
 
             # Validar si ya existe una clase con el mismo instructor, actividad y turno
             query_clase_existente = """
@@ -237,17 +215,38 @@ async def inscripciones(data: dict):
                 connection.commit()
                 clase_id = cursor.lastrowid
             else:
+                # Usar la clase existente
                 clase_id = clase_existente[0]
 
-            # Inscribir al alumno en la clase
-            query_inscribir_alumno = """
-                INSERT INTO alumno_clase (id_clase, ci_alumno, id_equipamiento)
-                VALUES (%s, %s, %s)
-            """
-            cursor.execute(query_inscribir_alumno, (clase_id, ci_alumno, id_equipamiento))
-            connection.commit()
+            # Inscribir a los alumnos en la clase existente
+            for ci_alumno in alumnos:
+                # Validar si el alumno ya está inscrito en otra clase en este turno
+                query_alumno_turno = """
+                    SELECT * FROM alumno_clase ac
+                    JOIN clase c ON ac.id_clase = c.id
+                    WHERE ac.ci_alumno = %s AND c.id_turno = %s
+                """
+                cursor.execute(query_alumno_turno, (ci_alumno, id_turno))
+                if cursor.fetchone():
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"El alumno con CI {ci_alumno} ya está inscrito en otra clase en este turno."
+                    )
 
-            return {"message": "Alumno inscrito exitosamente en la clase", "id_clase": clase_id}
+                # Inscribir al alumno
+                query_inscribir_alumno = """
+                    INSERT INTO alumno_clase (id_clase, ci_alumno, id_equipamiento)
+                    VALUES (%s, %s, %s)
+                """
+                cursor.execute(
+                    query_inscribir_alumno,
+                    (clase_id, ci_alumno, id_equipamiento if id_equipamiento else None), #equip opcional
+                )
+                connection.commit()
+
+            return {"message": "Alumnos inscritos exitosamente en la clase", "id_clase": clase_id}
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     finally:
@@ -364,6 +363,153 @@ async def create_instructor(instructor: InstructorCreate):
             return {"message": "Instructor creado exitosamente"}
     finally:
         connection.close()
+        
+        
+        
+        
+#########MODIFICAR CLASES##########
+
+@app.put("/clases/{id_clase}/")
+async def modificar_clase(id_clase: int, data: dict):
+    """
+    Modificar instructor, turno y alumnos de una clase.
+    """
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            # Obtener horario de la clase
+            query_horario_clase = """
+                SELECT t.horario_inicio, t.horario_fin
+                FROM clase c
+                JOIN turnos t ON c.id_turno = t.id
+                WHERE c.id = %s
+            """
+            cursor.execute(query_horario_clase, (id_clase,))
+            horario = cursor.fetchone()
+
+            # Validar que la consulta devolvió datos
+            if not horario:
+                raise HTTPException(status_code=404, detail="Clase o turno no encontrado.")
+
+            # Acceder a las columnas como un diccionario
+            hora_inicio = horario["hora_inicio"]
+            hora_fin = horario["hora_fin"]
+
+            # Validar si la clase está en horario activo
+            now = datetime.now().time()
+            if hora_inicio <= now <= hora_fin:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No se puede modificar la clase durante su horario activo."
+                )
+
+            # Modificar instructor
+            if "ci_instructor" in data:
+                query_modificar_instructor = """
+                    UPDATE clase
+                    SET ci_instructor = %s
+                    WHERE id = %s
+                """
+                cursor.execute(query_modificar_instructor, (data["ci_instructor"], id_clase))
+
+            # Modificar turno
+            if "id_turno" in data:
+                query_modificar_turno = """
+                    UPDATE clase
+                    SET id_turno = %s
+                    WHERE id = %s
+                """
+                cursor.execute(query_modificar_turno, (data["id_turno"], id_clase))
+
+            # Agregar alumnos
+            if "agregar_alumnos" in data:
+                for ci_alumno in data["agregar_alumnos"]:
+                    query_agregar_alumno = """
+                        INSERT INTO alumno_clase (id_clase, ci_alumno)
+                        VALUES (%s, %s)
+                    """
+                    cursor.execute(query_agregar_alumno, (id_clase, ci_alumno))
+
+            # Quitar alumnos
+            if "quitar_alumnos" in data:
+                for ci_alumno in data["quitar_alumnos"]:
+                    query_quitar_alumno = """
+                        DELETE FROM alumno_clase
+                        WHERE id_clase = %s AND ci_alumno = %s
+                    """
+                    cursor.execute(query_quitar_alumno, (id_clase, ci_alumno))
+
+            connection.commit()
+            return {"message": "Clase modificada exitosamente."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    finally:
+        connection.close()
+
+
+
+########MODIFICAR ALUMNOS##########
+@app.put("/clases/{id_clase}/alumnos/")
+async def modificar_alumnos(id_clase: int, data: dict):
+    """
+    Agregar o quitar alumnos de una clase grupal.
+    """
+    connection = get_connection()
+    try:
+        with connection.cursor() as cursor:
+            # Validar si la clase está en horario activo
+            query_horario_clase = """
+                SELECT t.hora_inicio, t.hora_fin
+                FROM clase c
+                JOIN turnos t ON c.id_turno = t.id
+                WHERE c.id = %s
+            """
+            cursor.execute(query_horario_clase, (id_clase,))
+            horario = cursor.fetchone()
+
+            if not horario:
+                raise HTTPException(status_code=404, detail="Clase no encontrada.")
+
+            hora_inicio, hora_fin = horario
+            now = datetime.now().time()
+
+            if hora_inicio <= now <= hora_fin:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No se puede modificar la clase durante su horario activo."
+                )
+
+            # Agregar alumnos
+            if "agregar" in data:
+                for ci_alumno in data["agregar"]:
+                    query_agregar_alumno = """
+                        INSERT INTO alumno_clase (id_clase, ci_alumno)
+                        VALUES (%s, %s)
+                    """
+                    cursor.execute(query_agregar_alumno, (id_clase, ci_alumno))
+
+            # Quitar alumnos
+            if "quitar" in data:
+                for ci_alumno in data["quitar"]:
+                    query_quitar_alumno = """
+                        DELETE FROM alumno_clase
+                        WHERE id_clase = %s AND ci_alumno = %s
+                    """
+                    cursor.execute(query_quitar_alumno, (id_clase, ci_alumno))
+
+            connection.commit()
+            return {"message": "Alumnos modificados exitosamente."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    finally:
+        connection.close()
+
+
+
+##########
+
+
+
 ######################################################################
 #                           Instructores                             #
 ######################################################################
